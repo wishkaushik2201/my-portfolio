@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&display=swap');
+
+:root {
+  --paper: #f7f6f1;
+  --ink: #202c24;
+  --muted: #747b72;
+  --line: #deded6;
+  --line-dark: #aeb1a7;
+  --coral: #df624c;
+  --green: #5d8560;
+  --sage: #e3e9df;
+  --sans: 'DM Sans', 'Segoe UI', sans-serif;
+  --display: 'Playfair Display', Georgia, serif;
+
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  scroll-behavior: smooth;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: var(--paper);
+  background: var(--coral);
+}
+
+:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 4px;
+}
