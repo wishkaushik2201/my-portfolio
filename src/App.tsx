@@ -1,107 +1,70 @@
+import { useEffect, useState, type FormEvent } from 'react'
+import { getPortfolio, submitContact } from './api'
+import type { Portfolio } from './types'
 import './App.css'
 
-const projects = [
-  {
-    number: '01',
-    name: 'B2C Fintech Platform',
-    type: 'Fintech · Appzlogic',
-    description: 'Microservices for credit reports, financial insights and recommendations, with subscription and payment workflows.',
-    image:
-      'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1400&q=85',
-    alt: 'Editorial cover image for a fintech platform project',
-    tags: ['Python', 'FastAPI', 'PostgreSQL', 'Cashfree'],
-  },
-  {
-    number: '02',
-    name: 'Bookchor E-commerce',
-    type: 'E-commerce · Bookchor',
-    description: 'A checkout experience with cart offers, coupon rules, Razorpay and cash-on-delivery payments.',
-    image:
-      'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=1400&q=85',
-    alt: 'Editorial cover image featuring books for the Bookchor project',
-    tags: ['PHP', 'REST APIs', 'Razorpay', 'AWS S3'],
-  },
-  {
-    number: '03',
-    name: 'Lock The Box',
-    type: 'Event booking platform',
-    description: 'City-based event discovery, event details, ticket booking and pre-orders in one responsive flow.',
-    image:
-      'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=1400&q=85',
-    alt: 'Editorial cover image of a live event for the Lock The Box project',
-    tags: ['PHP', 'MySQL', 'Bookings', 'Responsive web'],
-  },
-  {
-    number: '04',
-    name: 'Smart Library',
-    type: 'Open-source · Education',
-    description: 'A multi-school library platform for book circulation, role-based access, reservations and learning content.',
-    image:
-      'https://images.unsplash.com/photo-1507842217343-583bb7270b66?auto=format&fit=crop&w=1400&q=85',
-    alt: 'Editorial cover image of a library for the Smart Library project',
-    tags: ['Python', 'Django', 'MongoDB', 'Role-based access'],
-  },
-]
-
-const experience = [
-  {
-    role: 'Software Engineer',
-    company: 'Appzlogic Mobility Solutions',
-    location: 'Noida, Uttar Pradesh',
-    dates: 'Jan 2026 — Present',
-    highlight: 'Building fintech APIs, payment integrations and scheduled backend workflows.',
-  },
-  {
-    role: 'Software Developer',
-    company: 'Bookchor Literary Solutions',
-    location: 'Noida, Uttar Pradesh',
-    dates: 'Jun 2024 — Jun 2025',
-    highlight: 'Led a team of four; improved checkout experience by 15% and reduced page latency by 25%.',
-  },
-  {
-    role: 'Software Developer',
-    company: 'WGD Analytics',
-    location: 'Delhi',
-    dates: 'May 2022 — May 2024',
-    highlight: 'Reduced data processing time by 30% and page load time by 40% across web applications.',
-  },
-  {
-    role: 'Python Developer',
-    company: 'Concept Consulting & Infra',
-    location: 'Noida',
-    dates: 'Nov 2020 — May 2022',
-    highlight: 'Taught Python, Django and Pandas through course materials, assessments and workshops.',
-  },
-]
-
-const skillGroups = [
-  {
-    category: 'Languages',
-    skills: ['Python', 'JavaScript', 'PHP'],
-  },
-  {
-    category: 'Frameworks & libraries',
-    skills: ['Django', 'Flask', 'FastAPI', 'Celery', 'Node.js', 'Express', 'Laravel', 'SQLAlchemy'],
-  },
-  {
-    category: 'Frontend',
-    skills: ['React', 'jQuery'],
-  },
-  {
-    category: 'Databases & data',
-    skills: ['PostgreSQL', 'MySQL', 'Microsoft SQL', 'MongoDB', 'Redis', 'Pandas', 'NumPy', 'PySpark'],
-  },
-  {
-    category: 'Cloud & delivery',
-    skills: ['AWS S3', 'Docker', 'Git', 'GitHub Actions', 'Apache Airflow'],
-  },
-  {
-    category: 'Architecture & integrations',
-    skills: ['REST APIs', 'Microservices', 'Webhooks', 'Kafka', 'Cashfree', 'Razorpay'],
-  },
-]
-
 function App() {
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
+  const [contactStatus, setContactStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [contactMessage, setContactMessage] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    getPortfolio(controller.signal)
+      .then((data) => {
+        setPortfolio(data)
+        setLoadError(null)
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return
+        setLoadError(error instanceof Error ? error.message : 'Could not load portfolio.')
+      })
+
+    return () => controller.abort()
+  }, [retryCount])
+
+  async function handleContactSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    setContactStatus('sending')
+    setContactMessage('')
+
+    try {
+      const result = await submitContact({
+        name: String(formData.get('name') ?? ''),
+        email: String(formData.get('email') ?? ''),
+        message: String(formData.get('message') ?? ''),
+      })
+      form.reset()
+      setContactStatus('sent')
+      setContactMessage(result.message)
+    } catch (error: unknown) {
+      setContactStatus('error')
+      setContactMessage(error instanceof Error ? error.message : 'Could not send message.')
+    }
+  }
+
+  if (!portfolio) {
+    return (
+      <main className="api-state" aria-live="polite">
+        {loadError ? (
+          <>
+            <p role="alert">{loadError}</p>
+            <button type="button" onClick={() => setRetryCount((count) => count + 1)}>
+              Retry
+            </button>
+          </>
+        ) : (
+          <p role="status">Loading portfolio…</p>
+        )}
+      </main>
+    )
+  }
+
   return (
     <div className="site-shell">
       <header className="site-header">
@@ -123,12 +86,11 @@ function App() {
       <main id="top">
         <section className="intro section-wrap" aria-labelledby="intro-title">
           <div className="intro-copy">
-            <p className="eyebrow"><span className="status-dot" /> Software Engineer · Greater Noida, India</p>
-            <h1 id="intro-title">Backend systems, <span>built to scale.</span></h1>
+            <p className="eyebrow"><span className="status-dot" /> Software Engineer · {portfolio.hero.location}</p>
+            <h1 id="intro-title">{portfolio.hero.headline} <span>{portfolio.hero.headlineAccent}</span></h1>
             <div className="intro-bottom">
               <p className="intro-description">
-                I&apos;m Vishal Sharma, a software engineer with 5+ years of experience
-                building web products across fintech, e-commerce and analytics.
+                {portfolio.hero.summary}
               </p>
               <a className="text-link" href="#work">Explore selected work <span aria-hidden="true">↓</span></a>
             </div>
@@ -138,11 +100,11 @@ function App() {
             <div className="art-panel art-panel--coral" />
             <div className="art-panel art-panel--blue" />
             <div className="art-panel art-panel--yellow" />
-            <span className="art-caption">PYTHON / APIs / MICROSERVICES</span>
+            <span className="art-caption">{portfolio.hero.focus}</span>
             <span className="art-stamp">V<br />S</span>
           </div>
           <div className="intro-meta">
-            <span>5+ years building software</span>
+            <span>{portfolio.hero.years}</span>
             <span>Scroll to explore <span aria-hidden="true">↓</span></span>
           </div>
         </section>
@@ -156,7 +118,7 @@ function App() {
             <span className="section-index">2020 — Present</span>
           </div>
           <div className="project-list">
-            {projects.map((project) => (
+            {portfolio.projects.map((project) => (
               <article className="project" key={project.number}>
                 <div className="project-image">
                   <img src={project.image} alt={project.alt} loading="lazy" />
@@ -186,10 +148,10 @@ function App() {
               <p className="eyebrow">Where I&apos;ve contributed</p>
               <h2 id="experience-title">Experience<span className="heading-period">.</span></h2>
             </div>
-            <span className="section-index">4 roles · 5+ years</span>
+            <span className="section-index">{portfolio.experience.length} roles · {portfolio.hero.years}</span>
           </div>
           <div className="experience-list">
-            {experience.map((item) => (
+            {portfolio.experience.map((item) => (
               <article className="experience-item" key={item.company}>
                 <div className="experience-dates">{item.dates}</div>
                 <div className="experience-main">
@@ -211,7 +173,7 @@ function App() {
             <span className="section-index">Backend · Full stack</span>
           </div>
           <div className="skills-grid">
-            {skillGroups.map((group) => (
+            {portfolio.skillGroups.map((group) => (
               <div className="skill-group" key={group.category}>
                 <h3>{group.category}</h3>
                 <ul className="tag-list">
@@ -229,17 +191,12 @@ function App() {
               <span className="about-scribble" aria-hidden="true">✳</span>
             </div>
             <div className="about-copy">
-              <h2 id="about-title">I turn complex workflows into <span>systems that work.</span></h2>
-              <p>
-                I build backend services and web applications that help teams deliver
-                reliable products. My work spans API design, microservices, payment
-                integrations, data workflows and performance improvements.
-              </p>
+              <h2 id="about-title">{portfolio.about.headline} <span>{portfolio.about.headlineAccent}</span></h2>
+              <p>{portfolio.about.summary}</p>
               <div className="services">
-                <span>01 / API design and integrations</span>
-                <span>02 / Payment and subscription flows</span>
-                <span>03 / Data and query optimization</span>
-                <span>04 / Team collaboration and delivery</span>
+                {portfolio.about.services.map((service, index) => (
+                  <span key={service}>{String(index + 1).padStart(2, '0')} / {service}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -251,24 +208,47 @@ function App() {
               <p className="eyebrow">Education</p>
               <h2 id="education-title">The foundation<span className="heading-period">.</span></h2>
             </div>
-            <span className="section-index">2016</span>
+            <span className="section-index">{portfolio.education.year}</span>
           </div>
           <div className="education-entry">
-            <h3>Bachelor of Technology</h3>
-            <p>Electronics and Communication Engineering</p>
-            <span>Vishveshwarya Institute of Engineering and Technology</span>
+            <h3>{portfolio.education.degree}</h3>
+            <p>{portfolio.education.field}</p>
+            <span>{portfolio.education.institution}</span>
           </div>
         </section>
 
         <section className="contact-section section-wrap" id="contact" aria-labelledby="contact-title">
           <p className="eyebrow">Get in touch</p>
           <h2 id="contact-title">Let&apos;s build<br /><span>something useful.</span></h2>
-          <a className="contact-link" href="mailto:sharma.vishal.2201@gmail.com">
-            sharma.vishal.2201@gmail.com <span aria-hidden="true">↗</span>
+          <form className="contact-form" onSubmit={handleContactSubmit}>
+            <label>
+              Your name
+              <input name="name" type="text" autoComplete="name" maxLength={100} required />
+            </label>
+            <label>
+              Email address
+              <input name="email" type="email" autoComplete="email" maxLength={254} required />
+            </label>
+            <label>
+              Message
+              <textarea name="message" rows={4} minLength={10} maxLength={3000} required />
+            </label>
+            <button type="submit" disabled={contactStatus === 'sending'}>
+              {contactStatus === 'sending' ? 'Sending…' : 'Send message'}
+              <span aria-hidden="true">↗</span>
+            </button>
+            {contactMessage && (
+              <p className={`contact-feedback contact-feedback--${contactStatus}`} role={contactStatus === 'error' ? 'alert' : 'status'}>
+                {contactMessage}
+              </p>
+            )}
+          </form>
+          <a className="contact-link" href={`mailto:${portfolio.contact.email}`}>
+            {portfolio.contact.email} <span aria-hidden="true">↗</span>
           </a>
           <div className="contact-bottom">
-            <span>Greater Noida, India</span>
-            <a className="phone-link" href="tel:+918744800408">+91 87448 00408</a>
+            <span>{portfolio.contact.location}</span>
+            <a className="phone-link" href={`tel:${portfolio.contact.phone.replace(/\s/g, '')}`}>{portfolio.contact.phone}</a>
           </div>
         </section>
       </main>
